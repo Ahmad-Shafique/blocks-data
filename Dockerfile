@@ -64,7 +64,8 @@ RUN chown -R app:app /app
 USER app
 
 # Health is probed by the orchestrator (the Api maps ASP.NET Core health checks), not by
-# Docker. The base image defines no HEALTHCHECK, so NONE states that explicitly.
-HEALTHCHECK NONE
+# I01-WP3: /ping is mapped by the Genesis chassis for every API (ApplicationConfigurations.ConfigureMiddleware).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:5000/ping || exit 1
 
 ENTRYPOINT ["dotnet", "Api.dll"]
