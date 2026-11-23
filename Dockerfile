@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # =============================================================================
-# Blocks IDP API — production image (Kestrel + static React from wwwroot)
-# Build: docker build -t blocks-idp-api .
+# Blocks Data API — production image (Kestrel + static React from wwwroot)
+# Build: docker build -t blocks-data-api .
 # =============================================================================
 
 ARG DOTNET_PUBLISH_PLATFORM=linux/amd64
@@ -43,8 +43,8 @@ RUN dotnet publish server/Api/Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 
 ARG BUILD_VERSION=0.0.0
-LABEL org.opencontainers.image.title="blocks-idp-api" \
-    org.opencontainers.image.description="ASP.NET Core IDP API; React SPA served from wwwroot." \
+LABEL org.opencontainers.image.title="blocks-data-api" \
+    org.opencontainers.image.description="ASP.NET Core Data API; React SPA served from wwwroot." \
     org.opencontainers.image.version="${BUILD_VERSION}"
 
 WORKDIR /app
