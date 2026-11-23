@@ -1,0 +1,3 @@
+type: added
+breaking: false
+summary: PublicObjectRules and PublicObjectStorageException (internal groundwork for UploadPublicObjectAsync, SeliseBlocks.StorageDriver.OS 4.3.0). The rules check container names and object keys, merge an S3 public-read statement into a bucket policy without dropping the statements already there, and build the permanent URL of a public object. Nothing calls them yet.
