@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # =============================================================================
-# Blocks IDP API — production image (Kestrel + static React from wwwroot)
-# Build: docker build -t blocks-idp-api .
+# Blocks Data API — production image (Kestrel + static React from wwwroot)
+# Build: docker build -t blocks-data-api .
 # =============================================================================
 
 ARG DOTNET_PUBLISH_PLATFORM=linux/amd64
@@ -43,8 +43,8 @@ RUN dotnet publish server/Api/Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 
 ARG BUILD_VERSION=0.0.0
-LABEL org.opencontainers.image.title="blocks-idp-api" \
-    org.opencontainers.image.description="ASP.NET Core IDP API; React SPA served from wwwroot." \
+LABEL org.opencontainers.image.title="blocks-data-api" \
+    org.opencontainers.image.description="ASP.NET Core Data API; React SPA served from wwwroot." \
     org.opencontainers.image.version="${BUILD_VERSION}"
 
 WORKDIR /app
@@ -64,7 +64,8 @@ RUN chown -R app:app /app
 USER app
 
 # Health is probed by the orchestrator (the Api maps ASP.NET Core health checks), not by
-# Docker. The base image defines no HEALTHCHECK, so NONE states that explicitly.
-HEALTHCHECK NONE
+# I01-WP3: /ping is mapped by the Genesis chassis for every API (ApplicationConfigurations.ConfigureMiddleware).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:5000/ping || exit 1
 
 ENTRYPOINT ["dotnet", "Api.dll"]
