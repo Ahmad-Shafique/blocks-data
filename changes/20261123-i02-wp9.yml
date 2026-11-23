@@ -1,0 +1,3 @@
+type: added
+breaking: false
+summary: SeliseBlocks.StorageDriver.OS 4.3.0 adds UploadPublicObjectAsync(container, key, stream, contentType), which stores an object in a named container and returns its permanent public URL, and OpenReadAsync(container, key), on IStorageDriverService and on IStorageService. Public read is set per provider (the container access level on Azure, a bucket policy on that one bucket on S3 and S3-compatible stores; SFTP throws a clear "not supported" error, surfaced as PublicObjectStorageException with code public_objects_not_supported). IStorageDriverService.GetBlobClientAsync is marked [Obsolete]: it returns an Azure type and fails on a non-Azure Default configuration.
