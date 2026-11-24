@@ -17,6 +17,9 @@ namespace DomainService.Storage
         private const int MaxTenantSegmentLength = 63 - 11;
 
         protected readonly AmazonS3Client _s3Client;
+
+        /// <summary>Signs URLs handed to a browser. The same as <c>_s3Client</c> unless a public endpoint is configured (I02-WP11).</summary>
+        protected AmazonS3Client _presignClient;
         protected readonly string _bucketName;
 
         /// <summary>Private bucket backing `Public/Quarantine/...`, `Private/Quarantine/...`, and `Verification/...` candidate keys.</summary>
@@ -31,6 +34,7 @@ namespace DomainService.Storage
             _quarantineBucketName = GetQuarantineBucketName(_bucketName);
 
             _s3Client = new AmazonS3Client(accessKey, secretKey, Amazon.RegionEndpoint.GetBySystemName(region));
+            _presignClient = _s3Client;
 
             EnsureBucketExistsAsync(_bucketName).GetAwaiter().GetResult();
             EnsureBucketExistsAsync(_quarantineBucketName).GetAwaiter().GetResult();
@@ -39,12 +43,20 @@ namespace DomainService.Storage
         protected internal AwsS3StorageService(AmazonS3Client s3Client)
         {
             _s3Client = s3Client;
+            _presignClient = s3Client;
             _bucketName = BlocksContext.GetContext()?.TenantId.ToLower() ?? string.Empty;
             _quarantineBucketName = GetQuarantineBucketName(_bucketName);
 
             EnsureBucketExistsAsync(_bucketName).GetAwaiter().GetResult();
             EnsureBucketExistsAsync(_quarantineBucketName).GetAwaiter().GetResult();
         }
+
+        /// <summary>
+        /// A presigned URL is https unless told otherwise, whatever the client's ServiceURL says. A plain-http store
+        /// (the self-host store on localhost) must sign http URLs, or the browser's request to it fails.
+        /// </summary>
+        private Protocol PresignProtocol =>
+            _presignClient.Config.ServiceURL?.StartsWith("http://", StringComparison.OrdinalIgnoreCase) == true ? Protocol.HTTP : Protocol.HTTPS;
 
         private static string GetQuarantineBucketName(string bucketName)
         {
@@ -114,12 +126,13 @@ namespace DomainService.Storage
         {
             var request = new GetPreSignedUrlRequest
             {
+                Protocol = PresignProtocol,
                 BucketName = _bucketName,
                 Key = fileName,
                 Expires = DateTime.UtcNow.Add(expiry),
                 Verb = HttpVerb.PUT // Specifies that this is a PUT request for upload
             };
-            return _s3Client.GetPreSignedURL(request);
+            return _presignClient.GetPreSignedURL(request);
         }
 
         public async Task<SignedDownloadUrl?> GetDownloadUrlAsync(DownloadUrlRequest request)
@@ -129,13 +142,14 @@ namespace DomainService.Storage
             var expiresAtUtc = DateTime.UtcNow.Add(request.ExpiryDuration);
             var finalRequest = new GetPreSignedUrlRequest
             {
+                Protocol = PresignProtocol,
                 BucketName = _bucketName,
                 Key = request.FileName,
                 Expires = expiresAtUtc,
                 Verb = HttpVerb.GET // Specifies that this is a GET request
             };
 
-            var url = await _s3Client.GetPreSignedURLAsync(finalRequest);
+            var url = await _presignClient.GetPreSignedURLAsync(finalRequest);
             return new SignedDownloadUrl { Url = url, ExpiresAtUtc = expiresAtUtc };
         }
 
@@ -237,12 +251,13 @@ namespace DomainService.Storage
         {
             var request = new GetPreSignedUrlRequest
             {
+                Protocol = PresignProtocol,
                 BucketName = _quarantineBucketName,
                 Key = key,
                 Expires = DateTime.UtcNow.Add(expiry),
                 Verb = HttpVerb.PUT
             };
-            return _s3Client.GetPreSignedURL(request);
+            return _presignClient.GetPreSignedURL(request);
         }
 
         public async Task<string?> CopyToVerificationCandidateAsync(string quarantineKey, string candidateKey)
