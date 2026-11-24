@@ -51,6 +51,13 @@ namespace DomainService.Storage
             EnsureBucketExistsAsync(_quarantineBucketName).GetAwaiter().GetResult();
         }
 
+        /// <summary>
+        /// A presigned URL is https unless told otherwise, whatever the client's ServiceURL says. A plain-http store
+        /// (the self-host store on localhost) must sign http URLs, or the browser's request to it fails.
+        /// </summary>
+        private Protocol PresignProtocol =>
+            _presignClient.Config.ServiceURL?.StartsWith("http://", StringComparison.OrdinalIgnoreCase) == true ? Protocol.HTTP : Protocol.HTTPS;
+
         private static string GetQuarantineBucketName(string bucketName)
         {
             // Sanitized independently of the primary bucket's own name, which is left exactly as it is
@@ -119,6 +126,7 @@ namespace DomainService.Storage
         {
             var request = new GetPreSignedUrlRequest
             {
+                Protocol = PresignProtocol,
                 BucketName = _bucketName,
                 Key = fileName,
                 Expires = DateTime.UtcNow.Add(expiry),
@@ -134,6 +142,7 @@ namespace DomainService.Storage
             var expiresAtUtc = DateTime.UtcNow.Add(request.ExpiryDuration);
             var finalRequest = new GetPreSignedUrlRequest
             {
+                Protocol = PresignProtocol,
                 BucketName = _bucketName,
                 Key = request.FileName,
                 Expires = expiresAtUtc,
@@ -242,6 +251,7 @@ namespace DomainService.Storage
         {
             var request = new GetPreSignedUrlRequest
             {
+                Protocol = PresignProtocol,
                 BucketName = _quarantineBucketName,
                 Key = key,
                 Expires = DateTime.UtcNow.Add(expiry),
